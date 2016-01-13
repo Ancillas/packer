@@ -1,45 +1,36 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
-$script = <<SCRIPT
-SRCROOT="/opt/go"
-
-# Install Go
-sudo apt-get update
-sudo apt-get install -y build-essential mercurial
-sudo hg clone -u release https://code.google.com/p/go ${SRCROOT}
-cd ${SRCROOT}/src
-sudo ./all.bash
-
-# Setup the GOPATH
-sudo mkdir -p /opt/gopath
-cat <<EOF >/tmp/gopath.sh
-export GOPATH="/opt/gopath"
-export PATH="/opt/go/bin:\$GOPATH/bin:\$PATH"
-EOF
-sudo mv /tmp/gopath.sh /etc/profile.d/gopath.sh
-sudo chmod 0755 /etc/profile.d/gopath.sh
-
-# Make sure the gopath is usable by vagrant
-sudo chown -R vagrant:vagrant $SRCROOT
-sudo chown -R vagrant:vagrant /opt/gopath
-
-# Install some other stuff we need
-sudo apt-get install -y curl git-core zip
-SCRIPT
-
 Vagrant.configure(2) do |config|
-  config.vm.box = "chef/ubuntu-12.04"
 
-  config.vm.provision "shell", inline: $script
+  config.vm.box = "puppetlabs/ubuntu-14.04-64-puppet"
 
-  config.vm.synced_folder ".", "/vagrant", disabled: true
-
-  ["vmware_fusion", "vmware_workstation"].each do |p|
-    config.vm.provider "p" do |v|
-      v.vmx["memsize"] = "2048"
-      v.vmx["numvcpus"] = "2"
-      v.vmx["cpuid.coresPerSocket"] = "1"
-    end
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 1024
   end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    set -e
+    sudo apt-get update
+    set +e
+    sudo /opt/puppetlabs/bin/puppet apply -e 'package { ['curl', 'git', 'make', 'binutils', 'bison', 'gcc', 'build-essential', 'unzip', 'bzr', 'mercurial']: ensure => installed, }'
+    set -e
+    sudo -i -u vagrant bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
+    mkdir -p /home/vagrant/gocode
+    mkdir -p /home/vagrant/gocode/bin
+    mkdir -p /home/vagrant/gocode/pkg
+    mkdir -p /home/vagrant/gocode/src
+    echo "source /home/vagrant/.gvm/scripts/gvm" >> /home/vagrant/.profile
+    echo -e "export GOPATH=\\"/home/vagrant/gocode\\"" >> /home/vagrant/.profile
+    echo -e "export PATH=\\"/home/vagrant/gocode/bin:\\$PATH\\"" >> /home/vagrant/.profile
+    source /home/vagrant/.profile
+    gvm install go1.4.1
+    gvm use go1.4.1 --default
+    mkdir -p /home/vagrant/gocode
+    sudo chown -R vagrant:vagrant /home/vagrant/gocode
+    mkdir -p /home/vagrant/gocode/src/github.com/mitchellh
+    ln -s /vagrant /home/vagrant/gocode/src/github.com/mitchellh/packer
+    sudo chown -R vagrant:vagrant /home/vagrant/gocode/src
+  SHELL
+
 end
