@@ -17,7 +17,6 @@ import (
 	"github.com/mitchellh/packer/helper/config"
 	"github.com/mitchellh/packer/packer"
 	"github.com/mitchellh/packer/template/interpolate"
-	"github.com/vmware/govmomi"
 )
 
 const BuilderIdESX = "mitchellh.vmware-esx"
@@ -306,7 +305,7 @@ func (b *Builder) Run(ui packer.Ui, hook packer.Hook, cache packer.Cache) (packe
       VCenterSDKURL:   b.config.VCenterSDKURL,
       Network:         b.config.Network,
       DataCenter:      b.config.DataCenter,
-      NetworkType:     b.config.NetworkType,  
+      NetworkType:     b.config.NetworkType,
     },
 		&vmwcommon.StepRun{
 			BootWait:           b.config.BootWait,
