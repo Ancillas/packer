@@ -1,17 +1,17 @@
 package vcenteriso
 
 import (
-        "fmt"
-        "reflect"
-	"time"
-        "golang.org/x/net/context"
-	"net/url"
-        "github.com/vmware/govmomi"
-	"github.com/vmware/govmomi/find"
-	"github.com/vmware/govmomi/vim25/types"
-        "github.com/vmware/govmomi/object"
-	"github.com/mitchellh/multistep"
-        "github.com/mitchellh/packer/packer"
+    "fmt"
+    "reflect"
+    "time"
+    "golang.org/x/net/context"
+    "net/url"
+    "github.com/vmware/govmomi"
+    "github.com/vmware/govmomi/find"
+    "github.com/vmware/govmomi/vim25/types"
+    "github.com/vmware/govmomi/object"
+    "github.com/mitchellh/multistep"
+    "github.com/mitchellh/packer/packer"
 )
 
 // This step runs the fixes the Network configuration for  virtual machine.
@@ -30,146 +30,146 @@ import (
 //   <nothing>
 type StepFixNetwork struct {
 
-	VCenterSDKURL string
-	Network string
-	DataCenter string
-	VMName string
-	FlagFixNetwork bool
-	NetworkType string
-	QualifiedVMName string
+    VCenterSDKURL string
+    Network string
+    DataCenter string
+    VMName string
+    FlagFixNetwork bool
+    NetworkType string
+    QualifiedVMName string
 }
 
 func addVNIC(ui packer.Ui,f *find.Finder,ctx context.Context,c *govmomi.Client,vm *object.VirtualMachine,network string,nwType string ) error {
 
-        ui.Say("Adding NIC")
+    ui.Say("Adding NIC")
 
-	nets, err := f.NetworkList(ctx,network)
-	if err != nil {
-		return err
-	}
+    nets, err := f.NetworkList(ctx,network)
+    if err != nil {
+        return err
+    }
         // TODO expose param for DVS
-	net := nets[1]
+    net := nets[1]
 
-	backing, err := net.EthernetCardBackingInfo(ctx)
-	if err != nil {
-		return err
-	}
-	device, err := object.EthernetCardTypes().CreateEthernetCard(nwType, backing)
-	if err != nil {
-		return err
-	}
-	err = vm.AddDevice(ctx, device)
-	if err != nil {
-		return err
-	}
-	ui.Say("Adding NIC Success")
+    backing, err := net.EthernetCardBackingInfo(ctx)
+    if err != nil {
+        return err
+    }
+    device, err := object.EthernetCardTypes().CreateEthernetCard(nwType, backing)
+    if err != nil {
+        return err
+    }
+    err = vm.AddDevice(ctx, device)
+    if err != nil {
+        return err
+    }
+    ui.Say("Adding NIC Success")
 
 return nil
 }//
 
 func delVNIC(ui packer.Ui,f *find.Finder,ctx context.Context,vm *object.VirtualMachine) error {
-	ui.Say("Deleting NIC ")
-	devicelst, err := vm.Device(ctx)
-	if err != nil {
-		return err
-	}
+    ui.Say("Deleting NIC ")
+    devicelst, err := vm.Device(ctx)
+    if err != nil {
+        return err
+    }
 
-	for _, device := range devicelst {
+    for _, device := range devicelst {
 
-		switch device.(type) {
-		case *types.VirtualVmxnet3:
-			ui.Message(fmt.Sprintf("Removing NIC %s\n", device.GetVirtualDevice().DeviceInfo))
-			err := vm.RemoveDevice(ctx, device)
-			if err != nil {
-			   return err
-			}
-			return nil
+        switch device.(type) {
+        case *types.VirtualVmxnet3:
+            ui.Message(fmt.Sprintf("Removing NIC %s\n", device.GetVirtualDevice().DeviceInfo))
+            err := vm.RemoveDevice(ctx, device)
+            if err != nil {
+               return err
+            }
+            return nil
 
-		case *types.VirtualE1000:
-			ui.Message(fmt.Sprintf("Removing NIC %s\n", device.GetVirtualDevice().DeviceInfo))
-			err := vm.RemoveDevice(ctx, device)
-			if err != nil {
-				return err
-			}
-			return nil
-		default:
-			fmt.Printf("Type %s\n", reflect.TypeOf(device).Elem())
-			fmt.Printf("Device info %s\n", device.GetVirtualDevice().DeviceInfo)
+        case *types.VirtualE1000:
+            ui.Message(fmt.Sprintf("Removing NIC %s\n", device.GetVirtualDevice().DeviceInfo))
+            err := vm.RemoveDevice(ctx, device)
+            if err != nil {
+                return err
+            }
+            return nil
+        default:
+            fmt.Printf("Type %s\n", reflect.TypeOf(device).Elem())
+            fmt.Printf("Device info %s\n", device.GetVirtualDevice().DeviceInfo)
 
-		}
+        }
 
-	}
+    }
 
 return nil
 }//
 
 
 func (s *StepFixNetwork) Run(state multistep.StateBag) multistep.StepAction {
-        ui := state.Get("ui").(packer.Ui)
-	ui.Say("Waiting for vm")
+    ui := state.Get("ui").(packer.Ui)
+    ui.Say("Waiting for vm")
         time.Sleep(20 * time.Second)
 
         ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+    defer cancel()
 
-	// Parse URL from string
-	// url.
-	u, err := url.Parse(s.VCenterSDKURL)
-	if err != nil {
-		ui.Error(err.Error())
-		return multistep.ActionHalt
-	}
-	// Connect and log in to ESX or vCenter
-	c, err := govmomi.NewClient(ctx, u, true)
-	if err != nil {
-		ui.Error(err.Error())
-		return multistep.ActionHalt
-	}
+    // Parse URL from string
+    // url.
+    u, err := url.Parse(s.VCenterSDKURL)
+    if err != nil {
+        ui.Error(err.Error())
+        return multistep.ActionHalt
+    }
+    // Connect and log in to ESX or vCenter
+    c, err := govmomi.NewClient(ctx, u, true)
+    if err != nil {
+        ui.Error(err.Error())
+        return multistep.ActionHalt
+    }
 
-	f := find.NewFinder(c.Client, true)
+    f := find.NewFinder(c.Client, true)
 
-	ui.Say("Getting DataCenter ")
+    ui.Say("Getting DataCenter ")
 
-	// Find one and only datacenter
-	dc, err := f.Datacenter(ctx, s.DataCenter)
-	if err != nil {
-		ui.Error(err.Error())
-		return multistep.ActionHalt
-	}
+    // Find one and only datacenter
+    dc, err := f.Datacenter(ctx, s.DataCenter)
+    if err != nil {
+        ui.Error(err.Error())
+        return multistep.ActionHalt
+    }
 
-	ui.Message(fmt.Sprintf("DataCenter Name : %s",dc.String()))
+    ui.Message(fmt.Sprintf("DataCenter Name : %s",dc.String()))
 
-	// Make future calls local to this datacenter
-	f.SetDatacenter(dc)
+    // Make future calls local to this datacenter
+    f.SetDatacenter(dc)
 
-	var qualifiedVMName = "/"+s.DataCenter+"/vm/Discovered virtual machine/"+s.VMName
+    var qualifiedVMName = "/"+s.DataCenter+"/vm/Discovered virtual machine/"+s.VMName
 
     fmt.Printf("qualifiedVMName VM %s",qualifiedVMName)
 
-	// Find vm in datacenter
-	vm, err := f.VirtualMachine(ctx, qualifiedVMName)
-	if err != nil {
-		ui.Message(fmt.Sprintf("Retrying to get VM using QualifiedVMName VM %s",s.QualifiedVMName))
-		vm, err = f.VirtualMachine(ctx, s.QualifiedVMName)
+    // Find vm in datacenter
+    vm, err := f.VirtualMachine(ctx, qualifiedVMName)
+    if err != nil {
+        ui.Message(fmt.Sprintf("Retrying to get VM using QualifiedVMName VM %s",s.QualifiedVMName))
+        vm, err = f.VirtualMachine(ctx, s.QualifiedVMName)
 
-		if err != nil {
-			ui.Error(err.Error())
-			return multistep.ActionHalt
-		}
-	}
+        if err != nil {
+            ui.Error(err.Error())
+            return multistep.ActionHalt
+        }
+    }
 
-	err = delVNIC(ui,f,ctx,vm)
+    err = delVNIC(ui,f,ctx,vm)
 
         if err != nil {
           ui.Error(err.Error())
           return multistep.ActionHalt
         }
         ui.Say("Waiting for delete nic")
-    	time.Sleep(20 * time.Second)
+        time.Sleep(20 * time.Second)
 
-	err = addVNIC(ui,f,ctx,c,vm,s.Network,s.NetworkType)
-	if err != nil {
-          ui.Error(err.Error())
+    err = addVNIC(ui,f,ctx,c,vm,s.Network,s.NetworkType)
+    if err != nil {
+        ui.Error(err.Error())
           return multistep.ActionHalt
         }
         ui.Say("Waiting for add nic")
@@ -179,5 +179,5 @@ return multistep.ActionContinue
 }
 
 func (s *StepFixNetwork) Cleanup(state multistep.StateBag) {
-	// Nothing to be done for now
+    // Nothing to be done for now
 }
