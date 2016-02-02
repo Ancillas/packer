@@ -62,6 +62,13 @@ type Config struct {
 	RemoteUser           string `mapstructure:"remote_username"`
 	RemotePassword       string `mapstructure:"remote_password"`
 
+	FlagFixNetwork       bool     `mapstructure:"fix_vm_network"`
+	VCenterSDKURL        string   `mapstructure:"vcenter_sdk_url"`
+	Network              string   `mapstructure:"network"`
+	DataCenter           string   `mapstructure:"datacenter"`
+	NetworkType          string   `mapstructure:"network_type"`
+	QualifiedVMName      string   `mapstructure:"ql_vm_name"`
+
 	RawSingleISOUrl string `mapstructure:"iso_url"`
 
 	ctx interpolate.Context
@@ -292,6 +299,15 @@ func (b *Builder) Run(ui packer.Ui, hook packer.Hook, cache packer.Cache) (packe
 			VNCPortMax: b.config.VNCPortMax,
 		},
 		&StepRegister{},
+		&StepFixNetwork{
+      FlagFixNetwork:  b.config.FlagFixNetwork,
+      VMName:          b.config.VMName,
+      QualifiedVMName: b.config.QualifiedVMName,
+      VCenterSDKURL:   b.config.VCenterSDKURL,
+      Network:         b.config.Network,
+      DataCenter:      b.config.DataCenter,
+      NetworkType:     b.config.NetworkType,  
+    },
 		&vmwcommon.StepRun{
 			BootWait:           b.config.BootWait,
 			DurationBeforeStop: 5 * time.Second,
